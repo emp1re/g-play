@@ -1,0 +1,59 @@
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+    projects: [Project!]!
+}
+
+type Project {
+  id: ID!
+  name: String!
+  description: String!
+    locales: [Locale!]!
+}
+
+type Locale {
+  id: ID
+  name: String!
+  code: String!
+}
+
+
+type Query {
+  users: [User!]!
+  user(id: ID!): User
+  projects: [Project!]!
+  project(id: ID!): Project
+  locales: [Locale!]!
+  locale(id: ID!): Locale
+}
+
+input AddLocale{
+  userID: ID!
+  projectID: ID!
+  langName: String!
+  langCode: String!
+  countryName: String!
+  countryCode: String!
+}
+
+input AddProject{
+  userID: ID!
+  name: String!
+  description: String!
+}
+input AddUser{
+  name: String!
+  email: String!
+  password: String!
+}
+
+type Mutation {
+  createUser(input:AddUser): User!
+  createProject(input:AddProject): Project!
+  createLocale(input:AddLocale): Locale!
+}
