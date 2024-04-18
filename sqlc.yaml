@@ -1,0 +1,23 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: 
+      - "database/sql/queries.sql"
+    schema: "database/migrations"
+    gen:
+      go:
+        package: "models"
+        out: "database/models"
+        sql_package: "pgx/v5"
+        emit_exact_table_names: true
+        emit_empty_slices: true
+        emit_enum_valid_method: true
+        emit_all_enum_values: true
+        emit_pointers_for_null_types: true
+        overrides:
+          - column: value.value
+            go_type:
+              type: "ValueWithPlurals"
+          - column: value_version.value
+            go_type:
+              type: "ValueWithPlurals"

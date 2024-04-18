@@ -6,4 +6,6 @@ package graph
 //go:generate go get github.com/99designs/gqlgen@v0.17.45
 //go:generate go run github.com/99designs/gqlgen
 
-type Resolver struct{}
+type Resolver struct {
+	Tools *Context
+}

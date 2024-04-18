@@ -2,38 +2,60 @@
 
 package model
 
+import (
+	"time"
+)
+
 type AddLocale struct {
-	UserID      string `json:"userID"`
-	ProjectID   string `json:"projectID"`
+	UserID    int64      `json:"userID"`
+	ProjectID int64      `json:"projectID"`
+	Locale    *Newlocale `json:"locale"`
+}
+
+type AddProject struct {
+	UserID      int64        `json:"userID"`
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Locales     []*Newlocale `json:"locales"`
+}
+
+type AuthInput struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type AuthResponse struct {
+	AuthToken *AuthToken `json:"authToken"`
+	User      *User      `json:"user"`
+}
+
+type AuthToken struct {
+	AccessToken string    `json:"accessToken"`
+	ExpiredAt   time.Time `json:"expiredAt"`
+}
+
+type DeleteProject struct {
+	ID int64 `json:"id"`
+}
+
+type Locale struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	Code string `json:"code"`
+}
+
+type Mutation struct {
+}
+
+type Newlocale struct {
 	LangName    string `json:"langName"`
 	LangCode    string `json:"langCode"`
 	CountryName string `json:"countryName"`
 	CountryCode string `json:"countryCode"`
 }
 
-type AddProject struct {
-	UserID      string `json:"userID"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-type AddUser struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type Locale struct {
-	ID   *string `json:"id,omitempty"`
-	Name string  `json:"name"`
-	Code string  `json:"code"`
-}
-
-type Mutation struct {
-}
-
 type Project struct {
-	ID          string    `json:"id"`
+	ID          int64     `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Locales     []*Locale `json:"locales"`
@@ -42,9 +64,24 @@ type Project struct {
 type Query struct {
 }
 
+type RegisterInput struct {
+	FirstName       string `json:"firstName"`
+	LastName        string `json:"lastName"`
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirmPassword"`
+}
+
+type UpdateProject struct {
+	ID          int64   `json:"id"`
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+}
+
 type User struct {
-	ID       string     `json:"id"`
-	Name     string     `json:"name"`
-	Email    string     `json:"email"`
-	Projects []*Project `json:"projects"`
+	ID        int64      `json:"id"`
+	FirstName string     `json:"firstName"`
+	LastName  string     `json:"lastName"`
+	Email     string     `json:"email"`
+	Projects  []*Project `json:"projects"`
 }

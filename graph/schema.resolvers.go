@@ -6,44 +6,186 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
+	"strings"
 
+	"github.com/emp1re/g-play/auth"
+	"github.com/emp1re/g-play/database/models"
 	"github.com/emp1re/g-play/graph/model"
+	"go.uber.org/zap"
 )
 
-// CreateUser is the resolver for the createUser field.
-func (r *mutationResolver) CreateUser(ctx context.Context, input *model.AddUser) (*model.User, error) {
-	panic(fmt.Errorf("not implemented: CreateUser - createUser"))
+// Register is the resolver for the register field.
+func (r *mutationResolver) Register(ctx context.Context, input model.RegisterInput) (*model.AuthResponse, error) {
+	panic(fmt.Errorf("not implemented: Register - register"))
+}
+
+// Login is the resolver for the login field.
+func (r *mutationResolver) Login(ctx context.Context, input model.AuthInput) (*model.AuthResponse, error) {
+	user, err := r.Tools.Q.FindUserByEmail(ctx, input.Email)
+
+	if err != nil || &user == nil {
+		// Log the error and return a more informative error message.
+		log.Printf("Error finding user by email: %v", err)
+		return nil, err
+	}
+	project, err := r.Tools.Q.FindProjectsByUserID(ctx, user.ID)
+
+	var pid []int64
+
+	for _, p := range project {
+		pid = append(pid, p.ID)
+	}
+
+	token, err := auth.GenToken(user.ID, pid)
+	if err != nil {
+		return nil, errors.New("something went wrong")
+	}
+	return &model.AuthResponse{
+		AuthToken: token,
+		User: &model.User{
+			ID:        user.ID,
+			Email:     user.Email,
+			FirstName: user.FirstName,
+			LastName:  user.LastName,
+		},
+	}, nil
 }
 
 // CreateProject is the resolver for the createProject field.
 func (r *mutationResolver) CreateProject(ctx context.Context, input *model.AddProject) (*model.Project, error) {
-	panic(fmt.Errorf("not implemented: CreateProject - createProject"))
+	project, err := r.Tools.Q.CreateProject(context.TODO(), models.CreateProjectParams{
+		Name:        input.Name,
+		Description: input.Description,
+	})
+	if err != nil {
+		r.Tools.L.Error("Error creating project", zap.Error(err))
+		return nil, err
+	}
+
+	_, err = r.Tools.Q.CreateProjectUser(context.TODO(), models.CreateProjectUserParams{
+		ProjectID: project.ID,
+		UserID:    int64(input.UserID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	params := make([]models.CreateLocalesParams, len(input.Locales))
+	for i, locale := range input.Locales {
+
+		params[i] = models.CreateLocalesParams{
+			ProjectID: project.ID,
+			Name:      fmt.Sprintf("%s(%s)", locale.LangName, locale.CountryName),
+			Code:      fmt.Sprintf("%s_%s", locale.LangCode, strings.ToUpper(locale.CountryCode)),
+			Lang:      locale.LangCode,
+			Country:   locale.CountryCode,
+		}
+	}
+
+	_, err = r.Tools.Q.CreateLocales(context.TODO(), params)
+	if err != nil {
+		return nil, err
+	}
+
+	locales, err := r.Tools.Q.FindLocales(ctx, project.ID)
+	if err != nil {
+		return nil, err
+
+	}
+
+	return &model.Project{
+		ID:          project.ID,
+		Name:        project.Name,
+		Description: project.Description,
+		Locales:     convertLocales(locales),
+	}, err
+}
+
+// UpdateProject is the resolver for the updateProject field.
+func (r *mutationResolver) UpdateProject(ctx context.Context, input model.UpdateProject) (*model.Project, error) {
+	pj, err := r.Tools.Q.UpdateProject(ctx, models.UpdateProjectParams{
+		ID:          int64(input.ID),
+		Name:        input.Name,
+		Description: input.Description,
+	})
+	if err != nil {
+		return nil, err
+	}
+	locales, err := r.Tools.Q.FindLocales(ctx, int64(input.ID))
+	return &model.Project{
+		ID:          pj.ID,
+		Name:        pj.Name,
+		Description: pj.Description,
+		Locales:     convertLocales(locales),
+	}, nil
+}
+
+// DeleteProject is the resolver for the deleteProject field.
+func (r *mutationResolver) DeleteProject(ctx context.Context, id int64) (bool, error) {
+	pj, err := r.Tools.Q.DeleteProject(ctx, int64(id))
+	if err != nil {
+		return false, err
+	}
+	if pj == nil {
+		return false, nil
+	}
+	return true, nil
 }
 
 // CreateLocale is the resolver for the createLocale field.
 func (r *mutationResolver) CreateLocale(ctx context.Context, input *model.AddLocale) (*model.Locale, error) {
-	panic(fmt.Errorf("not implemented: CreateLocale - createLocale"))
+	locale, err := r.Tools.Q.CreateLocale(ctx, models.CreateLocaleParams{
+		ProjectID: int64(input.ProjectID),
+		Name:      fmt.Sprintf("%s(%s)", input.Locale.LangName, input.Locale.CountryName),
+		Code:      fmt.Sprintf("%s_%s", input.Locale.LangCode, strings.ToUpper(input.Locale.CountryCode)),
+		Lang:      input.Locale.LangCode,
+		Country:   input.Locale.CountryCode,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &model.Locale{
+		ID:   locale.ID,
+		Name: locale.Name,
+		Code: locale.Code,
+	}, nil
 }
 
-// Users is the resolver for the users field.
-func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
-	panic(fmt.Errorf("not implemented: Users - users"))
-}
+// GetUser is the resolver for the getUser field.
+func (r *queryResolver) GetUser(ctx context.Context, email string) (*model.User, error) {
+	user, err := r.Tools.Q.FindUserByEmail(ctx, email)
 
-// User is the resolver for the user field.
-func (r *queryResolver) User(ctx context.Context, id string) (*model.User, error) {
-	panic(fmt.Errorf("not implemented: User - user"))
+	if err != nil || &user == nil {
+		// Log the error and return a more informative error message.
+		log.Printf("Error finding user by email: %v", err)
+		return nil, err
+	}
+	convert := &model.User{
+		ID:        user.ID,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+	}
+	return convert, nil
 }
 
 // Projects is the resolver for the projects field.
 func (r *queryResolver) Projects(ctx context.Context) ([]*model.Project, error) {
-	panic(fmt.Errorf("not implemented: Projects - projects"))
+	return nil, nil
 }
 
 // Project is the resolver for the project field.
-func (r *queryResolver) Project(ctx context.Context, id string) (*model.Project, error) {
-	panic(fmt.Errorf("not implemented: Project - project"))
+func (r *queryResolver) Project(ctx context.Context, id int64) ([]*model.Project, error) {
+	project, err := r.Tools.Q.FindProjectsByUserID(ctx, int64(id))
+	if err != nil {
+		// Log the error and return a more informative error message.
+		log.Printf("Error finding project by id: %v", err)
+		return nil, err
+	}
+	return ConvertAggProjectsWithLocale(project), nil
 }
 
 // Locales is the resolver for the locales field.
@@ -52,7 +194,7 @@ func (r *queryResolver) Locales(ctx context.Context) ([]*model.Locale, error) {
 }
 
 // Locale is the resolver for the locale field.
-func (r *queryResolver) Locale(ctx context.Context, id string) (*model.Locale, error) {
+func (r *queryResolver) Locale(ctx context.Context, id int64) (*model.Locale, error) {
 	panic(fmt.Errorf("not implemented: Locale - locale"))
 }
 
@@ -71,23 +213,61 @@ type queryResolver struct{ *Resolver }
 //   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //     it when you're done.
 //   - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *LocaleResolver) LangName(ctx context.Context, obj *model.Locale, data string) error {
-	panic(fmt.Errorf("not implemented: LangName - langName"))
+func convertLocales(source []models.Locale) []*model.Locale {
+	var respLocaleList []*model.Locale
+	if source != nil {
+		respLocaleList = make([]*model.Locale, len(source))
+		for i := 0; i < len(source); i++ {
+			respLocale := convertLocale(source[i])
+			respLocaleList[i] = &respLocale
+		}
+	}
+	return respLocaleList
 }
-func (r *LocaleResolver) LangCode(ctx context.Context, obj *model.Locale, data string) error {
-	panic(fmt.Errorf("not implemented: LangCode - langCode"))
+func convertLocale(source models.Locale) model.Locale {
+	var respLocale model.Locale
+	respLocale.ID = source.ID
+	respLocale.Name = source.Name
+	respLocale.Code = source.Code
+	return respLocale
 }
-func (r *LocaleResolver) CountryName(ctx context.Context, obj *model.Locale, data string) error {
-	panic(fmt.Errorf("not implemented: CountryName - countryName"))
-}
-func (r *LocaleResolver) CountryCode(ctx context.Context, obj *model.Locale, data string) error {
-	panic(fmt.Errorf("not implemented: CountryCode - countryCode"))
-}
-func (r *UserResolver) Password(ctx context.Context, obj *model.User, data string) error {
-	panic(fmt.Errorf("not implemented: Password - password"))
-}
-func (r *Resolver) Locale() LocaleResolver { return LocaleResolver{r} }
-func (r *Resolver) User() UserResolver     { return UserResolver{r} }
+func ConvertAggProjectsWithLocale(source []models.FindProjectsByUserIDRow) []*model.Project {
+	var result []*model.Project
 
-type LocaleResolver struct{ *Resolver }
-type UserResolver struct{ *Resolver }
+	var current model.Project
+	var needToAddCurrent bool
+	for _, record := range source {
+		if (current.ID) == record.ID {
+			current.Locales = append(current.Locales, &model.Locale{
+				ID:   record.Locale.ID,
+				Code: record.Locale.Code,
+				Name: record.Locale.Name,
+			})
+			needToAddCurrent = true
+
+		} else {
+			if current.ID != 0 {
+				result = append(result, &current)
+			}
+
+			current = model.Project{
+				ID:          record.ID,
+				Name:        record.Name,
+				Description: record.Description,
+				Locales:     []*model.Locale{},
+			}
+			current.Locales = append(current.Locales, &model.Locale{
+				ID:   record.Locale.ID,
+				Code: record.Locale.Code,
+				Name: record.Locale.Name,
+			})
+			needToAddCurrent = true
+		}
+	}
+
+	if needToAddCurrent {
+		result = append(result, &current)
+	}
+
+	return result
+}

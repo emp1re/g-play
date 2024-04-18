@@ -1,40 +1,55 @@
 # GraphQL schema example
 #
 # https://gqlgen.com/getting-started/
+scalar Time
+
+type AuthToken {
+  accessToken: String!
+  expiredAt: Time!
+}
+
+type AuthResponse {
+  authToken: AuthToken!
+  user: User!
+}
 
 type User {
-  id: ID!
-  name: String!
+  id: Int!
+  firstName: String!
+  lastName: String!
   email: String!
     projects: [Project!]!
 }
 
 type Project {
-  id: ID!
+  id: Int!
   name: String!
   description: String!
-    locales: [Locale!]!
+  locales: [Locale!]!
 }
 
 type Locale {
-  id: ID
+  id: Int!
   name: String!
   code: String!
 }
 
 
 type Query {
-  users: [User!]!
-  user(id: ID!): User
+  getUser(email: String!): User
   projects: [Project!]!
-  project(id: ID!): Project
+  project(id: Int!): [Project!]!
   locales: [Locale!]!
-  locale(id: ID!): Locale
+  locale(id: Int!): Locale
 }
 
 input AddLocale{
-  userID: ID!
-  projectID: ID!
+  userID: Int!
+  projectID: Int!
+  locale: Newlocale!
+}
+
+input Newlocale{
   langName: String!
   langCode: String!
   countryName: String!
@@ -42,18 +57,41 @@ input AddLocale{
 }
 
 input AddProject{
-  userID: ID!
+  userID: Int!
   name: String!
   description: String!
+  locales: [Newlocale!]!
 }
-input AddUser{
-  name: String!
+input UpdateProject{
+  id : Int!
+  name: String
+  description: String
+}
+input DeleteProject{
+  id: Int!
+}
+
+input RegisterInput {
+  firstName: String!
+  lastName: String!
+  email: String!
+  password: String!
+  confirmPassword: String!
+}
+
+input AuthInput {
   email: String!
   password: String!
 }
 
 type Mutation {
-  createUser(input:AddUser): User!
+  register(input: RegisterInput!): AuthResponse!
+  login(input: AuthInput!): AuthResponse!
+
   createProject(input:AddProject): Project!
+  updateProject(input: UpdateProject!): Project!
+  deleteProject(id: Int!): Boolean!
+
   createLocale(input:AddLocale): Locale!
 }
+
