@@ -3,6 +3,17 @@
 # https://gqlgen.com/getting-started/
 scalar Time
 
+directive @goField(
+    name: String
+    resolver: String
+    ) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
+directive @hasRole(role: Role!) on FIELD_DEFINITION
+
+enum Role {
+  ADMIN
+  USER
+}
 type AuthToken {
   accessToken: String!
   expiredAt: Time!
@@ -34,13 +45,18 @@ type Locale {
   code: String!
 }
 
+type LocaleOps{
+  updateLocale(id: Int!, langName: String, langCode: String, countryName: String, countryCode: String): Locale!
+  deleteLocale(id: Int!): Boolean!
+}
+
 
 type Query {
-  getUser(email: String!): User
-  projects: [Project!]!
-  project(id: Int!): [Project!]!
-  locales: [Locale!]!
-  locale(id: Int!): Locale
+  getUser(email: String!): User @hasRole(role: ADMIN)
+  projects: [Project!]! @hasRole(role: ADMIN)
+  project(id: Int!): [Project!]! @hasRole(role: ADMIN)
+  locales: [Locale!]! @hasRole(role: ADMIN)
+  locale(id: Int!): Locale @hasRole(role: ADMIN)
 }
 
 input AddLocale{
@@ -95,3 +111,7 @@ type Mutation {
   createLocale(input:AddLocale): Locale!
 }
 
+
+type CustomMutationResolver{
+  createLocale(input:AddLocale): Locale!
+}

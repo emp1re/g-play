@@ -7,4 +7,8 @@ air :
 	@echo "Running air"
 	air -c .air.toml
 
-.PHONY: gen
+build:
+	@echo "Building the project"
+	chmod +x build.sh
+
+.PHONY: gen build	air

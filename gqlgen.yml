@@ -74,6 +74,12 @@ autobind:
 # modelgen, the others will be allowed when binding to fields. Configure them to
 # your liking
 models:
+  Key:
+    model:
+      - github.com/emp1re/g-play/graph/model.Key
+#  Locale:
+#    model:
+#      - github.com/emp1re/g-play/graph/model.Locale
   ID:
     model:
 #      - github.com/99designs/gqlgen/graphql.ID
