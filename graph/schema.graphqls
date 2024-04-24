@@ -14,6 +14,7 @@ enum Role {
   ADMIN
   USER
 }
+
 type AuthToken {
   accessToken: String!
   expiredAt: Time!
@@ -29,7 +30,6 @@ type User {
   firstName: String!
   lastName: String!
   email: String!
-    projects: [Project!]!
 }
 
 type Project {
@@ -53,7 +53,7 @@ type LocaleOps{
 
 type Query {
   getUser(email: String!): User @hasRole(role: ADMIN)
-  projects: [Project!]! @hasRole(role: ADMIN)
+  projectsById(id:Int!): [Project!]! @hasRole(role: ADMIN)
   project(id: Int!): [Project!]! @hasRole(role: ADMIN)
   locales: [Locale!]! @hasRole(role: ADMIN)
   locale(id: Int!): Locale @hasRole(role: ADMIN)
@@ -106,7 +106,7 @@ type Mutation {
 
   createProject(input:AddProject): Project!
   updateProject(input: UpdateProject!): Project!
-  deleteProject(id: Int!): Boolean!
+  deleteProject(id: Int!): Boolean! @hasRole(role: ADMIN)
 
   createLocale(input:AddLocale): Locale!
 }

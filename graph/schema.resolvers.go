@@ -172,9 +172,9 @@ func (r *queryResolver) GetUser(ctx context.Context, email string) (*model.User,
 	return convert, nil
 }
 
-// Projects is the resolver for the projects field.
-func (r *queryResolver) Projects(ctx context.Context) ([]*model.Project, error) {
-	return nil, nil
+// ProjectsByID is the resolver for the projectsById field.
+func (r *queryResolver) ProjectsByID(ctx context.Context, id int64) ([]*model.Project, error) {
+	panic(fmt.Errorf("not implemented: ProjectsByID - projectsById"))
 }
 
 // Project is the resolver for the project field.
@@ -213,6 +213,15 @@ type queryResolver struct{ *Resolver }
 //   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //     it when you're done.
 //   - You have helper methods in this file. Move them out to keep these resolver files clean.
+func (r *queryResolver) Projects(ctx context.Context, id int64) ([]*model.Project, error) {
+	projects, err := r.Tools.Q.FindProjectsByUserID(ctx, id)
+	if err != nil {
+		// Log the error and return a more informative error message.
+		log.Printf("Error finding projects: %v", err)
+		return nil, err
+	}
+	return ConvertAggProjectsWithLocale(projects), nil
+}
 func convertLocales(source []models.Locale) []*model.Locale {
 	var respLocaleList []*model.Locale
 	if source != nil {

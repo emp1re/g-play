@@ -9,6 +9,7 @@ import (
 
 var (
 	DATABASE_URL string
+	JWT_SECRET   string
 	DEPLOYMENT   DeploymentType
 )
 
@@ -18,6 +19,7 @@ func Read() {
 		log.Fatal("Error loading .env file")
 	}
 	DATABASE_URL = os.Getenv("DATABASE_URL")
+	JWT_SECRET = os.Getenv("JWT_SECRET")
 	DEPLOYMENT = getDeployment(os.Getenv("DEPLOYMENT"))
 
 	// only for non-produciton deployments

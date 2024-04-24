@@ -1,66 +1,80 @@
 package auth
 
 import (
-	"os"
+	"context"
+	"fmt"
+	"github.com/emp1re/g-play/graph/model"
+	"github.com/golang-jwt/jwt/v5"
+	"net/http"
 	"strings"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/dgrijalva/jwt-go/request"
 	"github.com/gin-gonic/gin"
-	"github.com/pkg/errors"
 )
 
 func MiddleWare() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		token, err := parseToken(c)
-		if err != nil {
-			c.JSON(401, gin.H{"error": "unauthorized"})
-			return
-		}
+		//token, err := Parse(c)
+		//if err != nil {
+		//	c.JSON(401, gin.H{"error": "unauthorized"})
+		//	return
+		//}
+		//
+		//claims, ok := token.Claims.(jwt.MapClaims)
+		//
+		//if !ok || !token.Valid {
+		//	c.JSON(401, gin.H{"error": "unauthorized"})
+		//	return
+		//}
+		//
+		//if claims["uid"] == nil {
+		//	c.JSON(401, gin.H{"error": "unauthorized"})
+		//	return
+		//}
+		ctx := context.WithValue(c, userCtxKey, &model.User{})
 
-		claims, ok := token.Claims.(jwt.MapClaims)
+		c.Request = c.Request.WithContext(ctx)
 
-		if !ok || !token.Valid {
-			c.JSON(401, gin.H{"error": "unauthorized"})
-			return
-		}
+		c.Next()
 
-		if claims["uid"] == nil {
-			c.JSON(401, gin.H{"error": "unauthorized"})
-			return
-		}
+		//ctx := context.WithValue(r.Context(), userCtxKey, &user)
+		//
+		//// and call the next with our new context
+		//r = r.WithContext(ctx)
+		//.Next()
+		//next.ServeHTTP(w, r)
 	}
-
 }
 
-var authHeaderExtractor = &request.PostExtractionFilter{
-	Extractor: request.HeaderExtractor{"Authorization"},
-	Filter:    stripBearerPrefixFromToken,
+var userCtxKey = &contextKey{"user"}
+
+type contextKey struct {
+	name string
 }
 
-func stripBearerPrefixFromToken(token string) (string, error) {
-	bearer := "BEARER"
-
-	if len(token) > len(bearer) && strings.ToUpper(token[0:len(bearer)]) == bearer {
-		return token[len(bearer)+1:], nil
-	}
-
-	return token, nil
+func ForContext(ctx context.Context) *model.User {
+	raw, _ := ctx.Value(userCtxKey).(*model.User)
+	return raw
 }
 
-var authExtractor = &request.MultiExtractor{
-	authHeaderExtractor,
-	request.ArgumentExtractor{"access_token"},
-}
-
-func parseToken(c *gin.Context) (*jwt.Token, error) {
-	jwtToken, err := request.ParseFromRequest(c.Request, authExtractor, func(token *jwt.Token) (interface{}, error) {
-		t := []byte(os.Getenv("JWT_SECRET"))
-		return t, nil
+func Parse(token string, secret string) (*jwt.Token, error) {
+	decoded, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secret), nil
 	})
+	return decoded, err
+}
 
-	return jwtToken, errors.Wrap(err, "parseToken error: ")
+func GetBearer(r *http.Request) string {
+	var accessToken string
+	authHeader := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+	if len(authHeader) == 2 && strings.EqualFold("Bearer", authHeader[0]) {
+		// has access token
+		accessToken = authHeader[1]
+	}
+	return accessToken
 }
 
 //func setCredentials(ctx context.Context) (*models.User, error) {

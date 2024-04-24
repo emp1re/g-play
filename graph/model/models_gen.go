@@ -91,11 +91,10 @@ type UpdateProject struct {
 }
 
 type User struct {
-	ID        int64      `json:"id"`
-	FirstName string     `json:"firstName"`
-	LastName  string     `json:"lastName"`
-	Email     string     `json:"email"`
-	Projects  []*Project `json:"projects"`
+	ID        int64  `json:"id"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Email     string `json:"email"`
 }
 
 type Role string

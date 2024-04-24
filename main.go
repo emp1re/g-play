@@ -2,50 +2,65 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
-
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/emp1re/g-play/auth"
 	"github.com/emp1re/g-play/config"
 	"github.com/emp1re/g-play/database"
 	"github.com/emp1re/g-play/database/models"
 	"github.com/emp1re/g-play/graph"
 	"github.com/emp1re/g-play/graph/model"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
+	"net/http"
 )
 
 const defaultPort = ":8070"
 
 // Defining the Graphql handler
 func graphqlProtectedHandler(ctx *graph.Context) gin.HandlerFunc {
-	c := graph.Config{Resolvers: &graph.Resolver{Tools: ctx}}
 
-	c.Directives.HasRole = func(ctx context.Context, obj interface{}, next graphql.Resolver, role model.Role) (res interface{}, err error) {
-		if !getCurrentUser(ctx).HasRole(role) {
-			// block calling the next resolver
-			return nil, fmt.Errorf("Access denied")
-		}
-		return next(ctx)
-	}
-	h := handler.NewDefaultServer(graph.NewExecutableSchema(c))
 	return func(c *gin.Context) {
+		cfg := graph.Config{Resolvers: &graph.Resolver{Tools: ctx}}
+
+		cfg.Directives.HasRole = func(ctx context.Context, obj interface{}, next graphql.Resolver, role model.Role) (res interface{}, err error) {
+
+			token, err := auth.Parse(auth.GetBearer(c.Request), config.JWT_SECRET)
+			if err != nil || !token.Valid {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, fmt.Errorf("unauthorized"))
+				return
+			}
+			fmt.Println(token)
+			//
+
+			claims, ok := token.Claims.(jwt.MapClaims)
+
+			if !ok || !token.Valid {
+				return nil, errors.New("unauthorized")
+
+			}
+			//
+			if claims["uid"] == nil {
+				return nil, errors.New("unauthorized")
+			}
+
+			return next(ctx)
+		}
+		h := handler.NewDefaultServer(graph.NewExecutableSchema(cfg))
 		h.ServeHTTP(c.Writer, c.Request)
 	}
 }
 
-type getCurrentUser struct {
-	ctx context.Context
-}
-
-func (g *getCurrentUser) HasRole(role model.Role) bool {
-
-	user := g.ctx.Value("user").(*models.User)
-	if user.Role == role {
-		return true
+func getCurrentUser(ctx context.Context) *model.User {
+	return &model.User{
+		ID:        1,
+		Email:     "",
+		FirstName: "John",
+		LastName:  "Doe",
 	}
-
-	return true
 }
 
 func main() {
