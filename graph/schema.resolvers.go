@@ -156,6 +156,16 @@ func (r *mutationResolver) CreateLocale(ctx context.Context, input *model.AddLoc
 
 // GetUser is the resolver for the getUser field.
 func (r *queryResolver) GetUser(ctx context.Context, email string) (*model.User, error) {
+	role, errs := model.FromContext(ctx)
+	fmt.Println("GET USER: ", role)
+	if !errs {
+		return nil, fmt.Errorf("Role not found in context")
+	}
+
+	if role.String() != "ADMIN" {
+		return nil, fmt.Errorf("Access denied!!!!!!!!!!!!!!!!!!!!!!")
+	}
+
 	user, err := r.Tools.Q.FindUserByEmail(ctx, email)
 
 	if err != nil || &user == nil {
@@ -172,9 +182,15 @@ func (r *queryResolver) GetUser(ctx context.Context, email string) (*model.User,
 	return convert, nil
 }
 
-// ProjectsByID is the resolver for the projectsById field.
-func (r *queryResolver) ProjectsByID(ctx context.Context, id int64) ([]*model.Project, error) {
-	panic(fmt.Errorf("not implemented: ProjectsByID - projectsById"))
+// Projects is the resolver for the projects field.
+func (r *queryResolver) Projects(ctx context.Context, uid int64) ([]*model.Project, error) {
+	project, err := r.Tools.Q.FindProjectsByUserID(ctx, int64(uid))
+	if err != nil {
+		// Log the error and return a more informative error message.
+		log.Printf("Error finding project by id: %v", err)
+		return nil, err
+	}
+	return ConvertAggProjectsWithLocale(project), nil
 }
 
 // Project is the resolver for the project field.
@@ -190,12 +206,27 @@ func (r *queryResolver) Project(ctx context.Context, id int64) ([]*model.Project
 
 // Locales is the resolver for the locales field.
 func (r *queryResolver) Locales(ctx context.Context) ([]*model.Locale, error) {
-	panic(fmt.Errorf("not implemented: Locales - locales"))
+	locales, err := r.Tools.Q.FindLocales(ctx, 1)
+	if err != nil {
+		return nil, err
+	}
+	return convertLocales(locales), nil
 }
 
 // Locale is the resolver for the locale field.
 func (r *queryResolver) Locale(ctx context.Context, id int64) (*model.Locale, error) {
-	panic(fmt.Errorf("not implemented: Locale - locale"))
+	//locale, err := r.Tools.Q.FindLocales(ctx, id)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//cvt := convertLocale(locale[0])
+	//return &convertLocale(locale), nil
+	return nil, nil
+}
+
+// Role is the resolver for the role field.
+func (r *userResolver) Role(ctx context.Context, obj *model.User) (model.Role, error) {
+	panic(fmt.Errorf("not implemented: Role - role"))
 }
 
 // Mutation returns MutationResolver implementation.
@@ -204,8 +235,12 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+// User returns UserResolver implementation.
+func (r *Resolver) User() UserResolver { return &userResolver{r} }
+
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type userResolver struct{ *Resolver }
 
 // !!! WARNING !!!
 // The code below was going to be deleted when updating resolvers. It has been copied here so you have
@@ -213,7 +248,7 @@ type queryResolver struct{ *Resolver }
 //   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //     it when you're done.
 //   - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *queryResolver) Projects(ctx context.Context, id int64) ([]*model.Project, error) {
+func (r *queryResolver) projects(ctx context.Context, id int64) ([]*model.Project, error) {
 	projects, err := r.Tools.Q.FindProjectsByUserID(ctx, id)
 	if err != nil {
 		// Log the error and return a more informative error message.
@@ -221,6 +256,18 @@ func (r *queryResolver) Projects(ctx context.Context, id int64) ([]*model.Projec
 		return nil, err
 	}
 	return ConvertAggProjectsWithLocale(projects), nil
+}
+func (r *queryResolver) project(ctx context.Context, id int64) ([]*model.Project, error) {
+	project, err := r.Tools.Q.FindProjectsByUserID(ctx, int64(id))
+	if err != nil {
+		// Log the error and return a more informative error message.
+		log.Printf("Error finding project by id: %v", err)
+		return nil, err
+	}
+	return ConvertAggProjectsWithLocale(project), nil
+}
+func (r *queryResolver) ProjectsByID(ctx context.Context, id int64) ([]*model.Project, error) {
+	panic(fmt.Errorf("not implemented: ProjectsByID - projectsById"))
 }
 func convertLocales(source []models.Locale) []*model.Locale {
 	var respLocaleList []*model.Locale

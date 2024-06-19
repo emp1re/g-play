@@ -23,6 +23,7 @@ resolver:
   dir: graph
   package: graph
   filename_template: "{name}.resolvers.go"
+
   # Optional: turn on to not generate template comments above resolvers
   # omit_template_comment: false
 
@@ -74,9 +75,12 @@ autobind:
 # modelgen, the others will be allowed when binding to fields. Configure them to
 # your liking
 models:
-  Key:
+  User:
     model:
-      - github.com/emp1re/g-play/graph/model.Key
+      - github.com/emp1re/g-play/graph/model.User
+  Role:
+    model:
+      - github.com/emp1re/g-play/graph/model.Role
 #  Locale:
 #    model:
 #      - github.com/emp1re/g-play/graph/model.Locale

@@ -3,11 +3,6 @@
 # https://gqlgen.com/getting-started/
 scalar Time
 
-directive @goField(
-    name: String
-    resolver: String
-    ) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
-
 directive @hasRole(role: Role!) on FIELD_DEFINITION
 
 enum Role {
@@ -30,6 +25,8 @@ type User {
   firstName: String!
   lastName: String!
   email: String!
+  Projects: [Project!]!
+  role: Role!
 }
 
 type Project {
@@ -53,8 +50,8 @@ type LocaleOps{
 
 type Query {
   getUser(email: String!): User @hasRole(role: ADMIN)
-  projectsById(id:Int!): [Project!]! @hasRole(role: ADMIN)
-  project(id: Int!): [Project!]! @hasRole(role: ADMIN)
+  projects(uid:Int!): [Project!]! @hasRole(role: ADMIN)
+  project(id: Int!): [Project!]!
   locales: [Locale!]! @hasRole(role: ADMIN)
   locale(id: Int!): Locale @hasRole(role: ADMIN)
 }
@@ -104,8 +101,8 @@ type Mutation {
   register(input: RegisterInput!): AuthResponse!
   login(input: AuthInput!): AuthResponse!
 
-  createProject(input:AddProject): Project!
-  updateProject(input: UpdateProject!): Project!
+  createProject(input:AddProject): Project! @hasRole(role: ADMIN)
+  updateProject(input: UpdateProject!): Project! @hasRole(role: ADMIN)
   deleteProject(id: Int!): Boolean! @hasRole(role: ADMIN)
 
   createLocale(input:AddLocale): Locale!
